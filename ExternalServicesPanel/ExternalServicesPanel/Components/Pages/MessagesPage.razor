@@ -1,0 +1,114 @@
+﻿@page "/messages"
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Сообщения</PageTitle>
+
+@if (_messages == Array.Empty<TaxMessage>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-block">
+        <input @bind="_ndata.Type" placeholder="Тип точки" />
+        <input @bind="_ndata.Number" placeholder="Номер точки" />
+        <input @bind="_ndata.StateRegistrationPlate" placeholder="Гос. знак" />
+    </div>
+
+    <div class="d-block p-2">
+        <div class="d-inline">
+            <button class="btn btn-primary" @onclick='Add'>
+                Добавить
+            </button>
+        </div>
+        <div class="d-inline" style="color:@_color">
+            @_alert
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Сумма</th>
+                <th>Имя владельца</th>
+                <th>Фамилия владельца</th>
+                <th>Отчество владельца</th>
+                <th>ИНН</th>
+                <th>Номер</th>
+                <th>Адрес</th>
+                <th>Почта</th>
+                <th>Документ</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var message in _messages)
+            {
+                <tr>
+                    <td>@message.Id</td>
+                    <td>@message.Tax</td>
+                    <td>@message.Name</td>
+                    <td>@message.Surname</td>
+                    <td>@message.Patronymic</td>
+                    <td>@message.TaxpayerIdentificationNumber</td>
+                    <td>@message.Phone</td>
+                    <td>@message.Address</td>
+                    <td>@message.Email</td>
+                    <td>@message.Document</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<TaxMessage>? _messages = Array.Empty<TaxMessage>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int Quantity = 50;
+    private FixationData _ndata = new FixationData { Type = "", Number = "", StateRegistrationPlate = "", DateTime = DateTime.Now };
+    private string _alert = "";
+    private string _color = "red";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7230/api/messages");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        _messages = await _client.GetFromJsonAsync<List<TaxMessage>>($"{_client.BaseAddress}") ?? _messages;
+    }
+
+    async Task Add()
+    {
+        if (_ndata.Type == "" || _ndata.Number == "" || _ndata.StateRegistrationPlate == "")
+        {
+            _color = "red";
+            _alert = "Заполните все поля";
+        }
+        else
+        {
+            _ndata.DateTime = DateTime.Now;
+            var response = await _client.PostAsJsonAsync($"https://localhost:7126/api/FixationPoints", _ndata);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _color = "green";
+                _alert = "Успешно добавлен";
+                await LoadData();
+            }
+            else
+            {
+                _color = "red";
+                _alert = "Ошибка при добавлении";
+            }
+        }
+    }
+}

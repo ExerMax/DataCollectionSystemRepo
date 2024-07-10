@@ -1,0 +1,86 @@
+﻿@page "/vehicles"
+@attribute [StreamRendering]
+@rendermode InteractiveAuto
+
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Автомобили</PageTitle>
+
+@if (_vehicles == Array.Empty<Vehicle>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-inline">
+        <input @bind="_num" placeholder="Гос. знак"/>
+        <button class="btn btn-primary" @onclick='LoadData'>
+            Найти
+        </button>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Гос. знак</th>
+                <th>Фамилия владельца</th>
+                <th>Имя владельца</th>
+                <th>ИНН владельца</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicle in _vehicles)
+            {
+                <tr>
+                    <td>@vehicle.Id</td>
+                    <td>@vehicle.StateRegistrationPlate</td>
+                    @if (@vehicle.IsTruck)
+                    {
+                        <td>@vehicle.VehicleOwner.Surname</td>
+                        <td>@vehicle.VehicleOwner.Name</td>
+                        <td>@vehicle.VehicleOwner.TaxpayerIdentificationNumber</td>
+                    }
+                    else
+                    {
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    }
+                    @if (vehicle.IsActual)
+                    {
+                        <td>Активен</td>
+                    }
+                    else
+                    {
+                        <td>Удалён</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Vehicle>? _vehicles = Array.Empty<Vehicle>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int Quantity = 50;
+    private string _num = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7284/api/vehicles");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        string num = (_num == "") ? "all" : _num;
+
+        _vehicles = await _client.GetFromJsonAsync<List<Vehicle>>($"{_client.BaseAddress}/Page={_page}&Quantity={Quantity}&Num={num}") ?? _vehicles;
+    }
+}

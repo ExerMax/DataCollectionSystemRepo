@@ -1,0 +1,67 @@
+﻿@page "/fixation-points"
+@attribute [StreamRendering]
+@rendermode InteractiveAuto
+
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Точки фиксации</PageTitle>
+
+@if (_fixationPoints == Array.Empty<FixationPoint>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-inline">
+        <input @bind="_numFilter" placeholder="Гос. знак" />
+        <button class="btn btn-primary" @onclick='LoadData'>
+            Найти
+        </button>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Устройство</th>
+                <th>Автомобиль</th>
+                <th>Дата и время</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var fixationPoint in _fixationPoints)
+            {
+                <tr>
+                    <td>@fixationPoint.Id</td>
+                    <td>@fixationPoint.FixationDevice.Type @fixationPoint.FixationDevice.Number</td>
+                    <td>@fixationPoint.Vehicle.StateRegistrationPlate</td>
+                    <td>@fixationPoint.DateTime</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<FixationPoint>? _fixationPoints = Array.Empty<FixationPoint>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int Quantity = 50;
+    private string _numFilter = "";
+    private string _devFilter = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7284/api/FixationPoints");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        string numFilter = (_numFilter == "") ? "all" : _numFilter;
+
+        _fixationPoints = await _client.GetFromJsonAsync<List<FixationPoint>>($"{_client.BaseAddress}/Page={_page}&Quantity={Quantity}&Number={numFilter}") ?? _fixationPoints;
+    }
+}

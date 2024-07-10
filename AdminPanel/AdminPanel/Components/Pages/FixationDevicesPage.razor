@@ -1,0 +1,168 @@
+﻿@page "/fixation-devices"
+@attribute [StreamRendering]
+@rendermode InteractiveAuto
+
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager NavManager
+
+<PageTitle>Устройства фиксации</PageTitle>
+
+@if (_fixationDevices == Array.Empty<FixationDevice>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-block">
+        Тип:
+        <input @bind="_nfd.Type" />
+        Номер:
+        <input @bind="_nfd.Number" />
+        Адрес:
+        <input @bind="_nfd.Address" />
+    </div>
+
+    <div class="d-block p-2">
+        <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Фильтры
+            </button>
+            <div class="dropdown-menu p-2">
+                <input @bind="_typeFilter" placeholder="Тип"/>
+                <div class="d-block">
+                    <button class="btn btn-secondary" @onclick='LoadData'>
+                        Применить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-inline">
+            <button class="btn btn-primary" @onclick='Add'>
+                Добавить
+            </button>
+        </div>
+
+        <div class="d-inline" style="color:@_color">
+            @_alert
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Тип</th>
+                <th>Номер</th>
+                <th>Адрес</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var fixationDevice in _fixationDevices)
+            {
+                <tr>
+                    <td>@fixationDevice.Id</td>
+                    <td>@fixationDevice.Type</td>
+                    <td>@fixationDevice.Number</td>
+                    @if(fixationDevice.Address != null)
+                    {
+                        <td>@fixationDevice.Address</td>
+                    }
+                    else
+                    {
+                        <td>Не указан</td>
+                    }
+                    @if (fixationDevice.IsActual)
+                    {
+                        <td>
+                            Активен
+                            <button class="btn btn-primary" @onclick="@(async() => await Delete(fixationDevice.Id))">
+                                Удалить
+                            </button>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>
+                            Удалён
+                            <button class="btn btn-primary" @onclick="@(async() => await Restore(fixationDevice.Id))">
+                                Восстановить
+                            </button>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<FixationDevice>? _fixationDevices = Array.Empty<FixationDevice>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int _quantity = 50;
+    private NewFixationDevice _nfd = new NewFixationDevice { Type = "", Number = "", Address = "" };
+    private string _alert = "";
+    private string _color = "red";
+    private int _pageCount = 1;
+
+    private string _typeFilter = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7284/api/FixationDevices");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        if (_typeFilter == "")
+        {
+            _fixationDevices = await _client.GetFromJsonAsync<List<FixationDevice>>($"{_client.BaseAddress}/Page={_page}&Quantity={_quantity}&TypeFilter=all") ?? _fixationDevices;
+        }
+        else
+        {
+            _fixationDevices = await _client.GetFromJsonAsync<List<FixationDevice>>($"{_client.BaseAddress}/Page={_page}&Quantity={_quantity}&TypeFilter={_typeFilter}") ?? _fixationDevices;
+        }
+    }
+
+    async Task Delete(int id)
+    {
+        await _client.DeleteAsync($"{_client.BaseAddress}/{id}");
+        await LoadData();
+    }
+
+    async Task Restore(int id)
+    {
+        await _client.PatchAsync($"{_client.BaseAddress}/{id}", null);
+        await LoadData();
+    }
+
+    async Task Add()
+    {
+        if (_nfd.Type == "" || _nfd.Number == "" || _nfd.Address == "")
+        {
+            _color = "red";
+            _alert = "Заполните все поля";
+        }
+        else
+        {
+            var response = await _client.PostAsJsonAsync($"{_client.BaseAddress}", _nfd);
+
+            if(response.IsSuccessStatusCode)
+            {
+                _color = "green";
+                _alert = "Успешно добавлен";
+                await LoadData();
+            }
+            else
+            {
+                _color = "red";
+                _alert = "Ошибка при добавлении";
+            }
+        }
+    }
+}

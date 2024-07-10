@@ -1,0 +1,140 @@
+﻿@page "/roads"
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Дороги</PageTitle>
+
+@if (_roads == Array.Empty<Road>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-block">
+        <input @bind="_nroad.StartPointType" placeholder="Тип первой точки"/>
+        <input @bind="_nroad.StartPointNumber" placeholder="Номер первой точки" />
+        <input @bind="_nroad.EndPointType" placeholder="Тип второй точки" />
+        <input @bind="_nroad.EndPointNumber" placeholder="Номер второй точки" />
+        <div class="d-block">
+            Протяженность (км.):
+            <input @bind="_nroad.Value" />
+        </div>
+    </div>
+
+    <div class="d-block p-2">
+        <div class="d-inline">
+            <button class="btn btn-primary" @onclick='Add'>
+                Добавить
+            </button>
+        </div>
+        <div class="d-inline" style="color:@_color">
+            @_alert
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Начало</th>
+                <th>Конец</th>
+                <th>Протяженность (км.)</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var road in _roads)
+            {
+                <tr>
+                    <td>@road.Id</td>
+                    <td>@road.StartPoint.Type @road.StartPoint.Number</td>
+                    <td>@road.EndPoint.Type @road.EndPoint.Number</td>
+                    <td>@road.Value</td>
+                    @if (road.IsActual)
+                    {
+                        <td>
+                            Активна
+                            <button class="btn btn-primary" @onclick="@(async() => await Delete(road.Id))">
+                                Удалить
+                            </button>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>
+                            Удалена
+                            <button class="btn btn-primary" @onclick="@(async() => await Restore(road.Id))">
+                                Восстановить
+                            </button>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string test = "";
+
+    private IEnumerable<Road>? _roads = Array.Empty<Road>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int Quantity = 50;
+    private NewRoad _nroad = new NewRoad { StartPointType = "", StartPointNumber = "", EndPointType = "", EndPointNumber = "", Value = 0 };
+    private string _alert = "";
+    private string _color = "red";
+    private int _pageCount = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7284/api/roads");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        _roads = await _client.GetFromJsonAsync<List<Road>>($"{_client.BaseAddress}/Page={_page}&Quantity={Quantity}") ?? _roads;
+    }
+
+    async Task Delete(int id)
+    {
+        await _client.DeleteAsync($"{_client.BaseAddress}/{id}");
+        await LoadData();
+    }
+
+    async Task Restore(int id)
+    {
+        await _client.PatchAsync($"{_client.BaseAddress}/{id}", null);
+        await LoadData();
+    }
+
+    async Task Add()
+    {
+        if (_nroad.StartPointType == "" || _nroad.StartPointNumber == "" || _nroad.EndPointType == "" || _nroad.EndPointNumber == "" || _nroad.Value == 0)
+        {
+            _color = "red";
+            _alert = "Заполните все поля";
+        }
+        else
+        {
+            var response = await _client.PostAsJsonAsync($"{_client.BaseAddress}", _nroad);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _color = "green";
+                _alert = "Успешно добавлен";
+                await LoadData();
+            }
+            else
+            {
+                _color = "red";
+                _alert = "Ошибка при добавлении";
+            }
+        }
+    }
+}

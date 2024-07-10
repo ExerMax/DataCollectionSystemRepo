@@ -1,0 +1,75 @@
+﻿@page "/vehicle-owners"
+@attribute [StreamRendering]
+@rendermode InteractiveAuto
+
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Владельцы автотранспорта</PageTitle>
+
+@if (_vehicleOwners == Array.Empty<VehicleOwner>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-inline">
+        <input @bind="_tin" placeholder="ИНН"/>
+        <button class="btn btn-primary" @onclick='LoadData'>
+            Найти
+        </button>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Имя</th>
+                <th>Фамилия</th>
+                <th>Отчество</th>
+                <th>ИНН</th>
+                <th>Телефон</th>
+                <th>Адрес</th>
+                <th>Эл. почта</th>
+                <th>Документ</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicleOwner in _vehicleOwners)
+            {
+                <tr>
+                    <td>@vehicleOwner.Id</td>
+                    <td>@vehicleOwner.Name</td>
+                    <td>@vehicleOwner.Surname</td>
+                    <td>@vehicleOwner.Patronymic</td>
+                    <td>@vehicleOwner.TaxpayerIdentificationNumber</td>
+                    <td>@vehicleOwner.Phone</td>
+                    <td>@vehicleOwner.Address</td>
+                    <td>@vehicleOwner.Email</td>
+                    <td>@vehicleOwner.Document</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<VehicleOwner>? _vehicleOwners = Array.Empty<VehicleOwner>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int Quantity = 50;
+    private string _tin = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7284/api/VehicleOwners");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        string tin = (_tin == "") ? "all" : _tin;
+        _vehicleOwners = await _client.GetFromJsonAsync<List<VehicleOwner>>($"{_client.BaseAddress}/Page={_page}&Quantity={Quantity}&TIN={tin}") ?? _vehicleOwners;
+    }
+}

@@ -1,0 +1,135 @@
+﻿@page "/vehicle-owners"
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Владельцы автотранспорта</PageTitle>
+
+@if (_vehicleOwners == Array.Empty<VehicleOwner>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-block">
+        <input @bind="_nvo.Name" placeholder="Имя" />
+        <input @bind="_nvo.Surname" placeholder="Фамилия" />
+        <input @bind="_nvo.Patronymic" placeholder="Отчество" />
+        <input @bind="_nvo.TaxpayerIdentificationNumber" placeholder="ИНН" />
+        <input @bind="_nvo.Phone" placeholder="Телефон" />
+        <input @bind="_nvo.Address" placeholder="Адрес" />
+        <input @bind="_nvo.Email" placeholder="Эл. почта" />
+        <input @bind="_nvo.Document" placeholder="Документ" />
+    </div>
+
+    <div class="d-block p-2">
+        <div class="d-inline">
+            <button class="btn btn-primary" @onclick='Add'>
+                Добавить
+            </button>
+        </div>
+        <div class="d-inline" style="color:@_color">
+            @_alert
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Имя</th>
+                <th>Фамилия</th>
+                <th>Отчество</th>
+                <th>ИНН</th>
+                <th>Телефон</th>
+                <th>Адрес</th>
+                <th>Эл. почта</th>
+                <th>Документ</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicleOwner in _vehicleOwners)
+            {
+                <tr>
+                    <td>@vehicleOwner.Id</td>
+                    <td>@vehicleOwner.Name</td>
+                    <td>@vehicleOwner.Surname</td>
+                    <td>@vehicleOwner.Patronymic</td>
+                    <td>@vehicleOwner.TaxpayerIdentificationNumber</td>
+                    <td>@vehicleOwner.Phone</td>
+                    <td>@vehicleOwner.Address</td>
+                    <td>@vehicleOwner.Email</td>
+                    <td>@vehicleOwner.Document</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<VehicleOwner>? _vehicleOwners = Array.Empty<VehicleOwner>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int Quantity = 50;
+    private string _alert = "";
+    private string _color = "red";
+    private NewVehicleOwner _nvo = new NewVehicleOwner
+    {
+        Name = "",
+        Surname = "",
+        Patronymic = "",
+        TaxpayerIdentificationNumber = "",
+        Phone = "",
+        Address = "",
+        Email = "",
+        Document = ""
+    };
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7230/api/VehicleOwners");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        _vehicleOwners = await _client.GetFromJsonAsync<List<VehicleOwner>>($"{_client.BaseAddress}") ?? _vehicleOwners;
+    }
+
+    async Task Add()
+    {
+        if (_nvo.Name == "" || 
+        _nvo.Surname == "" || 
+        _nvo.Patronymic == "" || 
+        _nvo.TaxpayerIdentificationNumber == "" ||
+        _nvo.Phone == "" ||
+        _nvo.Address == "" ||
+        _nvo.Email == "" ||
+        _nvo.Document == "")
+        {
+            _color = "red";
+            _alert = "Заполните все поля";
+        }
+        else
+        {
+            var response = await _client.PostAsJsonAsync($"{_client.BaseAddress}", _nvo);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _color = "green";
+                _alert = "Успешно добавлен";
+                await LoadData();
+            }
+            else
+            {
+                _color = "red";
+                _alert = "Ошибка при добавлении";
+            }
+        }
+    }
+}

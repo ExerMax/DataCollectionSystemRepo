@@ -1,0 +1,113 @@
+﻿@page "/vehicles"
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Автомобили</PageTitle>
+
+@if (_vehicles == Array.Empty<Vehicle>())
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="d-block">
+        ID Владельца:
+        <input @bind="_nveh.VehicleOwnerId" placeholder="ID владельца" />
+        <input @bind="_nveh.StateRegistrationPlate" placeholder="Гос. знак" />
+        <input type="checkbox" @bind="_nveh.IsTruck">Грузовой
+    </div>
+
+    <div class="d-block p-2">
+        <div class="d-inline">
+            <button class="btn btn-primary" @onclick='Add'>
+                Добавить
+            </button>
+        </div>
+        <div class="d-inline" style="color:@_color">
+            @_alert
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Гос. знак</th>
+                <th>Фамилия владельца</th>
+                <th>Имя владельца</th>
+                <th>ИНН владельца</th>
+                <th>Тип</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicle in _vehicles)
+            {
+                <tr>
+                    <td>@vehicle.Id</td>
+                    <td>@vehicle.StateRegistrationPlate</td>
+                    <td>@vehicle.VehicleOwner.Surname</td>
+                    <td>@vehicle.VehicleOwner.Name</td>
+                    <td>@vehicle.VehicleOwner.TaxpayerIdentificationNumber</td>
+                    @if (vehicle.IsTruck)
+                    {
+                        <td>Грузовой</td>
+                    }
+                    else
+                    {
+                        <td>Не грузовой</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Vehicle>? _vehicles = Array.Empty<Vehicle>();
+    private HttpClient _client = null!;
+    private int _page = 1;
+    private const int Quantity = 50;
+    private NewVehicle _nveh = new NewVehicle { StateRegistrationPlate = "", IsTruck = true, VehicleOwnerId = 0 };
+    private string _alert = "";
+    private string _color = "red";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _client = ClientFactory.CreateClient();
+        _client.BaseAddress = new Uri("https://localhost:7230/api/vehicles");
+
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        _vehicles = await _client.GetFromJsonAsync<List<Vehicle>>($"{_client.BaseAddress}") ?? _vehicles;
+    }
+
+    async Task Add()
+    {
+        if (_nveh.StateRegistrationPlate == "" || _nveh.VehicleOwnerId == 0)
+        {
+            _color = "red";
+            _alert = "Заполните все поля";
+        }
+        else
+        {
+            var response = await _client.PostAsJsonAsync($"{_client.BaseAddress}", _nveh);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _color = "green";
+                _alert = "Успешно добавлен";
+                await LoadData();
+            }
+            else
+            {
+                _color = "red";
+                _alert = "Ошибка при добавлении";
+            }
+        }
+    }
+}
