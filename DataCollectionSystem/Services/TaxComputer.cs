@@ -6,15 +6,11 @@ namespace DataCollectionSystem.Services
 {
     public class TaxComputer : ITaxComputer
     {
-        private readonly ApplicationDbContext _context;
-        private readonly ILogger<FixationPointsController> _logger;
+        private readonly ILogger<TaxComputer> _logger;
         private readonly double _feePerKilo = 3.05D;
 
-        public TaxComputer(
-            ApplicationDbContext context,
-            ILogger<FixationPointsController> logger)
+        public TaxComputer(ILogger<TaxComputer> logger)
         {
-            _context = context;
             _logger = logger;
         }
 
@@ -22,7 +18,7 @@ namespace DataCollectionSystem.Services
         {
             if(road == null) 
             {
-                _logger.LogWarning("Cannot compute: road is null");
+                _logger?.LogWarning("Cannot compute: road is null");
                 return 0; 
             }
             else
