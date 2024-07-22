@@ -6,6 +6,5 @@ namespace DataCollectionSystem.Services
     public interface IVehicleSearcher
     {
         public Vehicle? FindVehicle(string stateRegistrationPlate);
-        public Vehicle? FindExternalData(string stateRegistrationPlate);
     }
 }
