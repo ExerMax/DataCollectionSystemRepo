@@ -4,6 +4,6 @@ namespace DataCollectionSystem.Services
 {
     public interface ITaxComputer
     {
-        public double Compute(FixationPoint start, FixationPoint end);
+        public double Compute(Road road);
     }
 }

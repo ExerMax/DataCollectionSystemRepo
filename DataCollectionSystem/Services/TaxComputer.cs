@@ -18,12 +18,11 @@ namespace DataCollectionSystem.Services
             _logger = logger;
         }
 
-        public double Compute(FixationPoint start, FixationPoint end)
+        public double Compute(Road road)
         {
-            Road road = _context.Roads.FirstOrDefault(r => r.StartPointId == start.FixationDeviceId && r.EndPointId == end.FixationDeviceId && r.IsActual);
-
             if(road == null) 
-            { 
+            {
+                _logger.LogWarning("Cannot compute: road is null");
                 return 0; 
             }
             else

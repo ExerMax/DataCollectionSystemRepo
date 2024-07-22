@@ -53,7 +53,7 @@ namespace DataCollectionSystem.Services
 
             if (lastFixationPoint != null)
             {
-                double tax = _taxComputer.Compute(lastFixationPoint, newFixationPoint);
+                double tax = _taxComputer.Compute(_context.Roads.FirstOrDefault(r => r.StartPointId == lastFixationPoint.FixationDeviceId && r.EndPointId == newFixationPoint.FixationDeviceId && r.IsActual));
 
                 if (tax > 0)
                 {
