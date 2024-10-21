@@ -16,7 +16,6 @@ namespace DbAccess
         public ExternalServicesDbContext(DbContextOptions<ExternalServicesDbContext> options)
             : base(options)
         {
-            //Database.EnsureDeleted();
             Database.EnsureCreated();
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
